@@ -1,0 +1,381 @@
+<!--
+Copyright (c) 2013, Douglas Gore
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met: 
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer. 
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution. 
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+-------------------------------------------------------------------------------
+MODpod static player
+-------------------------------------------------------------------------------
+
+This code needs to be broken into some different usage scenarios:
+
+1) A simple example player that just plays some music back for developer reference.
+
+2) A demo player for showing capabilities. May or may not include pattern display.
+   Look to use other aspects of Web Audio for extras like visualisation.
+
+3) A tracker style UI with some editing capability. Demonstrate the ability to
+   change and track your own music.
+   
+4) Interactive demo. Show how a game developer could use modpod to add interactive
+   music to their code. Would need to support pattern jump and mixing.
+   
+-->
+
+<html>
+<head>
+    <title>MODpod</title>
+    <link href="style.css" rel="stylesheet" type="text/css">
+    <script type="text/javascript" src="imf.js"></script>
+    <script type="text/javascript" src="loadmod.js"></script>
+    <script type="text/javascript" src="loads3m.js"></script>
+    <!-- <script type="text/javascript" src="loadxm.js"></script> -->
+    <script type="text/javascript" src="modpod.js"></script>
+    <script type="text/javascript">
+        var oldrow = 0;
+        var mp = new modpod();
+        
+        mp.callbacks.newOrder = newOrder;
+        mp.callbacks.newRow = newRow;
+        mp.callbacks.updatePlayTime = updatePlayTime;
+        
+        var firstRun = true;
+        var lastTab = null;
+        
+        //document.getElementById("playtime").visibility = "hidden";
+    
+        function newOrder(order, total)
+        {
+            //pattern_pos.innerText = order + "/" + total;
+            pattern_bar.value = order;
+            pattern_bar.max = total;
+            
+            showPattern();
+        }
+        
+        function updatePlayTime(play_time)
+        {
+            //seconds = (play_time / 1000) | 0;
+            //ms = (play_time % 1000);
+        
+            var ptime = play_time / 10;
+            
+            var ms = (ptime % 100) | 0;
+            ptime /= 100;
+            var seconds = (ptime % 60) | 0;
+            ptime /= 60;
+            var minutes = (ptime % 60) | 0;
+            
+            if (minutes < 10) { minutes = "0" + minutes; }
+            if (seconds < 10) { seconds = "0" + seconds; }
+            if (ms < 10) { ms = "0" + ms; }
+        
+            playtime.innerText = minutes + ":" +seconds + ":" + ms;
+        }
+        
+        function newRow(row)
+        {
+            var oldRowRef = document.getElementById('row' + oldrow);
+            var playRow = document.getElementById('row' + row);
+            
+            oldRowRef.style.background = "white";
+            
+            playRow.style.background = "#FFFF66";
+            playRow.scrollIntoView(false);
+            
+            oldrow = row;
+        }
+        
+        function showPattern()
+        {
+            var root = document.getElementById('pattern_display');
+            var tab = document.createElement('table');
+            tab.className = "pattable";
+            
+            var noteString = [ 'C-', 'C#', 'D-', 'D#', 'E-', 'F-', 'F#', 'G-', 'G#', 'A-', 'A#', 'B-' ];
+            var effectChar = [ '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F', // MOD effects
+                               'A', 'D', 'E', 'F', 'I', 'Q'];
+            
+            var tbo = document.createElement('tbody');
+            var row, cell;
+            
+            for (var i = 0; i < 64; i++)
+            {
+                row = document.createElement('tr');
+                row.setAttribute('id', 'row' + i);
+
+                cell = document.createElement('td');
+                
+                var rowText = "";
+                
+                for(var j = 0; j < imfData.header.numChannels; j++)
+                {
+                    var workNote = imfData.patterns[imfData.header.orderTable[mp.workPattern]].columns[j].data[i];
+                    var noteText = "";
+                    
+                    if (workNote.note == 255)
+                    {
+                        noteText += "...";
+                    }
+                    else
+                    {
+                        var octave = ((workNote.note - 1) / 12) | 0;
+                        var noteLetter = noteString[(workNote.note - 1) % 12];
+                    
+                        noteText += noteLetter + octave;
+                    }
+                    
+                    noteText += " ";
+                    
+                    if (workNote.instrument > 0)
+                    {
+                        if (workNote.instrument < 10) { noteText += "0"; }
+                        noteText += workNote.instrument;
+                    }
+                    else
+                    {
+                        noteText += "..";
+                    }
+                    
+                    if (workNote.volume != 255)
+                    {
+                        var noteVol = workNote.volume.toString(16).toUpperCase();
+                        
+                        if (noteVol.length < 2)
+                        {
+                            noteVol = '0' + noteVol;
+                        }
+
+                        noteText += " " + noteVol + " ";
+                    }
+                    else
+                    {
+                        noteText += " .. ";
+                    }
+                    
+                    if ((workNote.effect === effects.IMF_EFFECTFF) || ((workNote.effect === effects.PT_EFFECT0) && (workNote.effectData === 0)))
+                    {
+                        noteText += "...";
+                    }
+                    else
+                    {
+                        var fxData = workNote.effectData.toString(16).toUpperCase();
+                        
+                        if (fxData.length < 2)
+                        {
+                            fxData = '0' + fxData;
+                        }
+                    
+                        noteText += effectChar[workNote.effect] + fxData;
+                    }
+                    
+                    rowText += noteText + '\xa0\xa0\xa0\xa0';
+                }
+                
+                cell.appendChild(document.createTextNode(rowText));
+                row.appendChild(cell);
+                
+                tbo.appendChild(row);
+            }
+            
+            tab.appendChild(tbo);
+            
+            if (firstRun)
+            {
+                root.appendChild(tab);
+                firstRun = false;
+            }
+            else
+            {
+                root.replaceChild(tab, lastTab);
+            }
+            
+            lastTab = tab;
+        }
+    
+        function playURL(url, cont)
+        {
+            var requestURL = url;
+            
+            document.getElementById("playbox").style.visibility = "visible";
+            document.getElementById("welcome").style.visibility = "hidden";
+            document.getElementById("pattern_display").style.visibility = "visible";
+        
+            var request = new XMLHttpRequest();
+                request.open("GET", url, true);
+                request.responseType = "arraybuffer";
+                request.onerror = function (e)
+                {
+                    console.error(e);
+                };
+            
+            request.onload = function (e)
+            {
+                mp.handleLoad(requestURL, request.response);
+                
+                document.getElementById("songtitle").innerText = imfData.header.songName;
+                document.getElementById("modformat").innerText = imfData.header.numChannels + "ch " + imfData.header.formatShort;
+            };
+
+            request.send();
+        }
+        
+        function stopPlayback()
+        {
+            document.getElementById("playbox").style.visibility = "hidden";
+            document.getElementById("welcome").style.visibility = "visible";
+            document.getElementById("pattern_display").style.visibility = "hidden";
+
+            mp.stop();
+        }
+    </script>
+</head>
+
+<body>
+<div id="welcome">
+<h1>MODpod</h1>
+<p>
+When you hear music on the Internet it is usually streamed from a compressed audio
+file. What if your web browser could perform live music instead of streaming it?
+Using the forthcoming W3C WebAudio API audio can be dynamically synthesised right
+here in your web browser. This project will replay "tracker style" music via
+your browser.
+</p>
+<p>
+Supported browsers:<br>
+Chrome - Safari 6 - Safari (iOS) 6<br>
+Awaiting support:<br>
+Internet Explorer - Firefox (forthcoming) - Chrome (Android)
+</p>
+
+<p>Click to play:</p>
+<ul>
+    <li>
+        <a href="#" onClick="playURL('modules/revision.mod');">Revision</a>
+    </li>
+    <li>
+        <a href="#" onClick="playURL('modules/calm_b4_the_storm.mod');">Calm Before the Storm</a>
+    </li>
+    <li>
+        <a href="#" onClick="playURL('modules/ambpower.mod');">Ambient Power</a>
+    </li>
+    <li>
+        <a href="#" onClick="playURL('modules/aces-high2.mod');">Aces High 2</a> - pass
+    </li>
+    <li>
+        <a href="#" onClick="playURL('modules/bagrasta.mod');">Bagrasta</a>
+    </li>
+    <li>
+        <a href="#" onClick="playURL('modules/bgnoises.mod');">BG Noises</a>
+    </li>
+    <li>
+        <a href="#" onClick="playURL('modules/drop_the_panic.mod');">Drop the Panic</a> - missing effect
+    </li>
+    <li>
+        <a href="#" onClick="playURL('modules/chicago_song.mod');">Chicago Song</a> - out of tune?
+    </li>
+    <li>
+        <a href="#" onClick="playURL('modules/16_beat_bounce.mod');">16 Beat Bounce</a>
+    </li>
+    <li>
+        <a href="#" onClick="playURL('modules/6beat.mod');">6 Beat</a> - pass
+    </li>
+    <li>
+        <a href="#" onClick="playURL('modules/nuke-carsp.mod');">Carsp</a> - pass
+    </li>
+    <li>
+        <a href="#" onClick="playURL('modules/cyberride.mod');">Cyber Ride</a> - need to check arppegio effect
+    </li>
+    <li>
+        <a href="#" onClick="playURL('modules/APPEAL.MOD');">Libertine</a>
+    </li>
+    <li>
+        <a href="#" onClick="playURL('modules/shelter.s3m');">Shelter</a>
+    </li>
+    <li>
+        <a href="#" onClick="playURL('modules/ode_to_protracker.mod');">Ode to Protracker</a> - If only...
+    </li>
+    <li>
+        <a href="#" onClick="playURL('modules/4-mat_madness.mod');">4-mat's Madness</a>
+    </li>
+    <li>
+        <a href="#" onClick="playURL('modules/sundance.mod');">Sundance</a>
+    </li>
+    <li>
+        <a href="#" onClick="playURL('modules/cream_of_the_earth.mod');">Cream of the Earth</a>
+    </li>
+    <li>
+        <a href="#" onClick="playURL('modules/madness2_parta.mod');">Madness2 Part A</a> - weird cutout problems
+    </li>
+    <li>
+        <a href="#" onClick="playURL('modules/black_queen.mod');">Black Queen</a> - WTF?!?!
+    </li>
+    <li>
+        <a href="#" onClick="playURL('modules/DOPE.MOD');">Dope</a>
+    </li>
+    <li>
+        <a href="#" onClick="playURL('modules/steelchambers2.mod');">Pinball Fantasies - Steelchambers 2</a>
+    </li>
+    <li>
+        <a href="#" onClick="playURL('modules/64mania.s3m');">64 Mania (S3M)</a> - Good S3M test
+    </li>
+    <li>
+        <a href="#" onClick="playURL('modules/backwards-sdrawkcab.s3m');">Backwards (S3M)</a> - major fail
+    </li>
+    <li>
+        <a href="#" onClick="playURL('modules/insideout.s3m');">Inside out (S3M)</a> - near perfect
+    </li>
+    <li>
+        <a href="#" onClick="playURL('modules/pod.s3m');">Point of Departure (S3M)</a> - sync issues
+    </li>
+    <li>
+        <a href="#" onClick="playURL('modules/mainmenu.s3m');">Main Menu (S3M)</a>
+    </li>
+    <li>
+        <a href="#" onClick="playURL('modules/03-MENU.S3M');">OMF menu (S3M)</a> - Pass
+    </li>
+    <li>
+        <a href="#" onClick="playURL('modules/impulse.s3m');">Impulse (S3M)</a>
+    </li>
+    <li>
+        <a href="#" onClick="playURL('modules/aceman_-_swimwalkin.xm');">Aceman Swimwalkin' (XM)</a>
+    </li>
+</ul>
+
+<p>
+&copy; 2013 Douglas Gore.
+</p>
+</div>
+
+<div id="playbox" class="titlebox">
+    <span id="mptitle" class="topline">MODpod</span>
+    <span id="songtitle" class="topline">Unknown</span>
+    <span id="modformat" class="topline">?</span>
+    <progress id="pattern_bar" value="0" max="20" class="topline"></progress>
+    <span id="playtime" class="topline">0:00:00</span>
+    <span class="topline"><a href="#" onClick="stopPlayback()">Stop</a></span>
+</div>
+
+<div id="pattern_display"></div>
+
+</body>
+</html>
