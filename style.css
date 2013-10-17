@@ -98,6 +98,24 @@ a.topline a:visited.topline
 }
 */
 
+.pattable
+{
+    -webkit-transition: -webkit-transform 0.7s linear;
+    -webkit-transform: translate(0, 0);
+}
+
+#hl_row
+{
+    width: 100%;
+    height: 1em;
+    position: absolute;
+    
+    background: yellow;
+    
+    /* -webkit-transition: -webkit-transform 0.7s linear; */
+    -webkit-transform: translate(0, 0);
+}
+
 #pattern_display
 {
     position: fixed;

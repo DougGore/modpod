@@ -97,6 +97,7 @@ function loadMod(modData, imfData)
 
     imfData.header.songName = '';
     
+    // Build the song name string
     for (ii = 0; ii < 20; ii++)
     {
         imfData.header.songName += String.fromCharCode(viewData.getInt8(dataOffset++));
@@ -128,6 +129,7 @@ function loadMod(modData, imfData)
             data            : null
         };
         
+        // If the loop length is greater than 2 then we have a loop
         if (imfData.samples[ii].loopEnd > 2)
         {
             imfData.samples[ii].loopMode = 1;
@@ -139,6 +141,7 @@ function loadMod(modData, imfData)
             console.log("Sample " + ii + " has a non-zero finetune of " + imfData.samples[ii].finetune);
         }
         
+        // Current value is actually loop length so convert to an end point
         imfData.samples[ii].loopEnd += imfData.samples[ii].loopStart;
         
         dataOffset += 8;
@@ -160,20 +163,20 @@ function loadMod(modData, imfData)
         }
     }
     
-    // Skip the 4 byte signature as we already have it
+    // Skip the 4 byte signature as we already have it (does this break a 15 instrument MOD?)
     dataOffset += 4;
 
     // Create our pattern set
     
-    var noteByte1;
-    var noteByte2;
-    var noteByte3;
-    var noteByte4;
+    var noteByte1,
+        noteByte2,
+        noteByte3,
+        noteByte4;
     
-    var playSample = 0;
-    var notePeriod = 0;
-    var noteEffect = 0;
-    var noteIndex = 0;
+    var playSample = 0,
+        notePeriod = 0,
+        noteEffect = 0,
+        noteIndex = 0;
 
     // Read all patterns
     for (var pp = 0;  pp < imfData.header.numPatterns; pp++)
@@ -229,11 +232,11 @@ function loadMod(modData, imfData)
                 
                 imfData.patterns[pp].columns[jj].data[ii] =
                 {
-                    note : noteIndex,
+                    note       : noteIndex,
                     instrument : playSample,
-                    effect : (noteEffect >> 8),
+                    effect     : (noteEffect >> 8),
                     effectData : (noteEffect & 0xFF),
-                    volume : 255
+                    volume     : 255
                 };
             }
         }

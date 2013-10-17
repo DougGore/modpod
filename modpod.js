@@ -88,7 +88,7 @@ var imfData;
 
 var mpLoaderTable;
 
-// Create our audio context, assume it's standardised, before trying vendor extension
+// Create our audio context, assume it's standardised, before trying vendor prefix
 if (typeof AudioContext === "function")
 {
     context = new window.AudioContext();
@@ -294,10 +294,6 @@ function modpod()
 
     this.bPlayerInit = false;
 
-    this.bRowComplete = false;
-    this.bAudioComplete = false;
-    this.bGenerateAudio = 0;
-
     this.speed = 0;
     this.BPM = 0;
     this.tickCount = 0;
@@ -320,7 +316,8 @@ function modpod()
     this.samplesLeft = 0;
 
     this.audioNode = null;
-    
+
+    // Track how much play time has elapsed
     this.playTime = 0;
     
     this.channels = [];
@@ -328,9 +325,9 @@ function modpod()
     // Callbacks for sending interesting events back to JS clients
     this.callbacks =
     {
-        newOrder : null,
+        newOrder       : null,
         updatePlayTime : null,
-        newRow : null
+        newRow         : null
     };
 }
 
@@ -448,7 +445,7 @@ modpod.prototype.stop = function()
     this.audioNode.disconnect(context.destination);
     imfData = undefined;
     //delete imfData;
-}
+};
 
 modpod.prototype.createChannels = function()
 {
@@ -458,32 +455,32 @@ modpod.prototype.createChannels = function()
     {
         this.channels[ii] =
         {
-            instrument  : 0,
-            sample      : 0,
-            trigger     : false,
-            volume      : 0,
-            note        : 0,
-            origNote    : 0,
-            finetune    : 0,
-            period      : 0,
-            panning     : 0,
+            instrument      : 0,
+            sample          : 0,
+            trigger         : false,
+            volume          : 0,
+            note            : 0,
+            origNote        : 0,
+            finetune        : 0,
+            period          : 0,
+            panning         : 0,
             
-            portaNote   : 0,
-            portaSpeed  : 0,
+            portaNote       : 0,
+            portaSpeed      : 0,
 
-            delayNote   : 0,
+            delayNote       : 0,
             
-            vibPos      : 0,
-            vibSpeed    : 0,
-            vibDepth    : 0,
+            vibPos          : 0,
+            vibSpeed        : 0,
+            vibDepth        : 0,
 
-            portaParam  : 0,
+            portaParam      : 0,
 
-            effect      : 0,
-            effectData  : 0,
-            lastEffectData : 0,
+            effect          : 0,
+            effectData      : 0,
+            lastEffectData  : 0,
 
-            sampleRate  : 0,
+            sampleRate      : 0,
 
             samplePosition  : 0,
             sampleStep      : 0,
@@ -903,132 +900,118 @@ modpod.prototype.rowEffect = function(c)
     case effects.PT_EFFECT2: break; // We've already dealt with this is
     
     case effects.PT_EFFECT3:        // 0x3 - Porta to note
+        if(this.channels[c].effectData)
         {
-            if(this.channels[c].effectData)
-            {
-                this.channels[c].portaSpeed = this.channels[c].effectData;
-            }
-        } break;
+            this.channels[c].portaSpeed = this.channels[c].effectData;
+        }
+        break;
     
     case effects.PT_EFFECT4:        // 0x4 - Vibrato
+        if (this.EParamX)
         {
-            if (this.EParamX)
-            {
-                this.channels[c].vibSpeed = this.EParamX;
-            }
+            this.channels[c].vibSpeed = this.EParamX;
+        }
             
-            if (this.EParamY)
-            {
-                this.channels[c].vibDepth = this.EParamY;
-            }
-        } break;
+        if (this.EParamY)
+        {
+            this.channels[c].vibDepth = this.EParamY;
+        }
+        break;
     
     case effects.PT_EFFECT5: break;
     case effects.PT_EFFECT6: break;
     case effects.PT_EFFECT8: break;
                 
     case effects.PT_EFFECT9:        // 0x9 - Set sample offset
-        {
-            //Channels[c].VPosition = (float)(Channels[c].effectData * 0x100);
-            //this.channels[c].IntPosition = this.channels[c].effectData * 0x100;
-            this.channels[c].samplePosition = this.channels[c].effectData * 0x100;
-        } break;
+        //Channels[c].VPosition = (float)(Channels[c].effectData * 0x100);
+        //this.channels[c].IntPosition = this.channels[c].effectData * 0x100;
+        this.channels[c].samplePosition = this.channels[c].effectData * 0x100;
+        break;
                 
     case effects.PT_EFFECTA: break; // We've already dealt with this is
     
     case effects.PT_EFFECTB:	// 0xB - Position Jump
-        {
-            console.log("Need to fix position jump (jump to pattern: " + this.channels[c].effectData + ")");
-            this.workRow = 0;
-            this.workPattern = this.channels[c].effectData;
-            //this.resetRow = true;
-        } break;
+        console.log("Need to fix position jump (jump to pattern: " + this.channels[c].effectData + ")");
+        this.workRow = 0;
+        this.workPattern = this.channels[c].effectData;
+        //this.resetRow = true;
+        break;
     
     case effects.PT_EFFECTC:	// 0xC - Set volume
-        {
-            this.channels[c].volume = this.channels[c].effectData;
-        } break;
+        this.channels[c].volume = this.channels[c].effectData;
+        break;
         
     case effects.PT_EFFECTD:	// 0xD - Pattern Break
+        // Increment on to the next pattern
+        if (!this.handledBreak)
         {
-            // Increment on to the next pattern
-            if (!this.handledBreak)
-            {
-                this.workPattern++;
-                this.handledBreak = true;
-            }
-            else
-            {
-                console.log("Pattern break already seen!");
-            }
+            this.workPattern++;
+            this.handledBreak = true;
+        }
+        else
+        {
+            console.log("Pattern break already seen!");
+        }
 
-            if (this.workPattern === imfData.header.numPositions)
-            {
-                this.stopSong = true;
-            }
-            else
-            {
-                this.workRow = (this.EParamX * 10) + this.EParamY;
-                this.workRow--;
-                console.log("Jumping to row " + this.workRow);
-                //this.resetRow = true; 
-            }
+        if (this.workPattern === imfData.header.numPositions)
+        {
+            this.stopSong = true;
+        }
+        else
+        {
+            this.workRow = (this.EParamX * 10) + this.EParamY;
+            this.workRow--;
+            console.log("Jumping to row " + this.workRow);
+            //this.resetRow = true; 
+        }
 
-            // Blanks any invalid values
-            if(this.workRow > 63)
-            {
-                this.workRow = 63;
-            }
-    
-        } break;
+        // Blanks any invalid values
+        if(this.workRow > 63)
+        {
+            this.workRow = 63;
+        }
+        break;
                     
     case effects.PT_EFFECTE:	// 0xE - Extended MOD command
+        switch(this.EParamX)
         {
-            switch(this.EParamX)
-            {
-            case 0: break; // Amiga hardware effect, ignore
-            
-            case 0x8:	// 0xE8 - Set Pan Position
-                {
-                    this.channels[c].panning = (this.EParamY - 0x8) * 8;
-                } break;
-    
-            case 0xA:	// 0xEA - Fine volume slide down
-                {
-                    this.channels[c].volume += this.EParamY;
-                } break;
+        case 0: break; // Amiga hardware effect, ignore
+        
+        case 0x8:	// 0xE8 - Set Pan Position
+            this.channels[c].panning = (this.EParamY - 0x8) * 8;
+            break;
 
-            case 0xB:	// 0xEB - Fine volume slide down
-                {
-                    this.channels[c].volume -= this.EParamY;
-                } break;
+        case 0xA:	// 0xEA - Fine volume slide down
+            this.channels[c].volume += this.EParamY;
+            break;
 
-            case 0xD: break;	// 0xED - Note delay (dealt with below)
-                    
-            case 0xE:	// 0xEE - Pattern delay
-                {
-                    this.patternDelay = this.EParamY;
-                } break;
+        case 0xB:	// 0xEB - Fine volume slide down
+            this.channels[c].volume -= this.EParamY;
+            break;
+
+        case 0xD: break;	// 0xED - Note delay (dealt with below)
                 
-            default:
-                {
-                    console.log("Unsupported effect 14 command variation %i.\n", this.EParamX);
-                } break;
-            }
-        } break;
+        case 0xE:	// 0xEE - Pattern delay
+            this.patternDelay = this.EParamY;
+            break;
+            
+        default:
+            console.log("Unsupported effect 14 command variation %i.\n", this.EParamX);
+            break;
+        }
+        break;
                     
     case effects.PT_EFFECTF:	// 0xF - Set Speed/Tempo
+        if (this.channels[c].effectData <= 32)
         {
-            if (this.channels[c].effectData <= 32)
-            {
-                this.speed = this.channels[c].effectData;
-            }
-            else
-            {
-                this.BPM = this.channels[c].effectData * 2 / 5;
-                console.log("Speed change to " + this.BPM + " BPM");
-            }
-        } break;
+            this.speed = this.channels[c].effectData;
+        }
+        else
+        {
+            this.BPM = this.channels[c].effectData * 2 / 5;
+            console.log("Speed change to " + this.BPM + " BPM");
+        }
+        break;
     
     case effects.S3M_EFFECTA: this.speed = this.channels[c].effectData; break;	// S3M Set Speed
     case effects.S3M_EFFECTD: this.doS3MVolSlide(c); break;	// S3M Volume slide
@@ -1038,9 +1021,8 @@ modpod.prototype.rowEffect = function(c)
     case effects.IMF_EFFECTFF: break;	// 0xFF - No effect marker
 
     default:
-        {
             //console.log("Unsupported Protracker effect #%i, data %i\n", this.channels[c].effect, this.channels[c].effectData);
-        } break;
+        break;
     }
 };
     
@@ -1048,7 +1030,7 @@ modpod.prototype.tickEffect = function()
 {
     var c;
     
-    for (c = 0; c <  imfData.header.numChannels; c++)
+    for (c = 0; c < imfData.header.numChannels; c++)
     {
         // Set effect parameters
         this.EParamX = this.channels[c].effectData >> 4;
@@ -1057,59 +1039,54 @@ modpod.prototype.tickEffect = function()
         switch (this.channels[c].effect)
         {
         case effects.PT_EFFECT0:
+            // Abort this effect if there is no valid sample to apply it to
+            if (this.channels[c].sample === 0)
             {
-                // Abort this effect if there is no valid sample to apply it to
-                if (this.channels[c].sample === 0)
+                break;
+            }
+            
+            /* XM NOTE - Disabled until periodtable and sample rate can be resolved! */
+            if(this.channels[c].effectData > 0)
+            {
+                switch(this.tickCount % 3)
                 {
+                case 0: break;
+                case 1:
+                    this.setFrequency(c, 14317056 / (8363 * periodTable[this.channels[c].note + this.EParamX] / imfData.samples[this.channels[c].sample - 1].sampleRate));
+                    break;
+
+                case 2:
+                    this.setFrequency(c, 14317056 / (8363 * periodTable[this.channels[c].note + this.EParamY] / imfData.samples[this.channels[c].sample - 1].sampleRate));
                     break;
                 }
-                
-                /* XM NOTE - Disabled until periodtable and sample rate can be resolved! */
-                if(this.channels[c].effectData > 0)
-                {
-                    switch(this.tickCount % 3)
-                    {
-                    case 0: break;
-                    case 1:
-                        {
-                            this.setFrequency(c, 14317056 / (8363 * periodTable[this.channels[c].note + this.EParamX] / imfData.samples[this.channels[c].sample - 1].sampleRate));
-                        } break;
-
-                    case 2:
-                        {
-                            this.setFrequency(c, 14317056 / (8363 * periodTable[this.channels[c].note + this.EParamY] / imfData.samples[this.channels[c].sample - 1].sampleRate));
-                        } break;
-                    }
-                }
-            } break;
+            }
+            break;
         
         case effects.PT_EFFECT1:	// 0x1 - Porta up
+            this.channels[c].period -= this.channels[c].effectData;
+            
+            // Not allowed to slide beyond B3
+            if (this.channels[c].period < 453)
             {
-                this.channels[c].period -= this.channels[c].effectData;
-                
-                // Not allowed to slide beyond B3
-                if (this.channels[c].period < 453)
-                {
-                    console.log("Changing period to 453");
-                    this.channels[c].period = 453;
-                }
-                
-                this.setFrequencyFromPeriod(c);
-            } break;
+                console.log("Changing period to 453");
+                this.channels[c].period = 453;
+            }
+            
+            this.setFrequencyFromPeriod(c);
+            break;
             
         case effects.PT_EFFECT2:	// 0x2 - Porta down
+            this.channels[c].period += this.channels[c].effectData;
+
+            // Not allowed to slide beyond C1
+            if (this.channels[c].period > 3424)
             {
-                this.channels[c].period += this.channels[c].effectData;
+                console.log("Changing period to 3424");
+                this.channels[c].period = 3424;
+            }
 
-                // Not allowed to slide beyond C1
-                if (this.channels[c].period > 3424)
-                {
-                    console.log("Changing period to 3424");
-                    this.channels[c].period = 3424;
-                }
-
-                this.setFrequencyFromPeriod(c);
-            } break;
+            this.setFrequencyFromPeriod(c);
+            break;
             
         case effects.PT_EFFECT3: this.doPorta(c); break;		// 0x3 - Slide to Note
         case effects.PT_EFFECT4: this.doVibrato(c); break;	// 0x4 - Vibrato
@@ -1118,31 +1095,28 @@ modpod.prototype.tickEffect = function()
         case effects.PT_EFFECTA: this.doVolSlide(c); break;
 
         case effects.PT_EFFECTE:
+            switch(this.EParamX)
             {
-                switch(this.EParamX)
+            case 13:
+                if (this.tickCount === this.EParamY)
                 {
-                case 13:
-                    {
-                        if (this.tickCount === this.EParamY)
-                        {
-                            this.channels[c].period = this.channels[c].delayNote;
-                        }
-                    }
+                    this.channels[c].period = this.channels[c].delayNote;
                 }
-            } break;
+                break;
+            }
+            break;
 
         case effects.S3M_EFFECTD: this.doS3MVolSlide(c); break;	// S3M Volume slide
         case effects.S3M_EFFECTE: this.doS3MPortaDown(c); break;	// S3M Portamento down
         case effects.S3M_EFFECTF: this.doS3MPortaUp(c); break;		// S3M Portamento up
 
         case effects.S3M_EFFECTQ:
-            {
-                this.doS3MRetrig(c);
+            this.doS3MRetrig(c);
 
-                if((this.tickCount % this.EParamY)==0)
-                //Channels[c].VPosition = 0;
-                this.channels[c].samplePosition = 0;
-            } break;
+            if((this.tickCount % this.EParamY)==0)
+            //Channels[c].VPosition = 0;
+            this.channels[c].samplePosition = 0;
+            break;
 
         } // End of switch
     }
@@ -1234,8 +1208,8 @@ modpod.prototype.doVolSlide = function(c)
 
 modpod.prototype.doS3MVolSlide = function(channel)
 {
-    var VParamX;
-    var VParamY;
+    var VParamX,
+        VParamY;
 
     if (this.channels[channel].effectData > 0)
     {
@@ -1312,12 +1286,12 @@ modpod.prototype.doS3MVolSlide = function(channel)
     {
         this.channels[channel].volume = 64;
     }
-}
+};
 
 modpod.prototype.doS3MPortaDown = function(channel)
 {
-    var PParamX;
-    var PParamY;
+    var PParamX,
+        PParamY;
 
     if (this.channels[channel].effectData > 0)
     {
@@ -1345,7 +1319,7 @@ modpod.prototype.doS3MPortaDown = function(channel)
             this.channels[channel].period += this.channels[channel].effectData << 2;
         }
     }
-}
+};
 
 modpod.prototype.doS3MPortaUp = function(channel)
 {
@@ -1378,7 +1352,7 @@ modpod.prototype.doS3MPortaUp = function(channel)
             this.channels[channel].period -= this.channels[channel].effectData << 2;
         }
     }
-}
+};
 
 modpod.prototype.doS3MRetrig = function(channel)
 {
@@ -1401,7 +1375,7 @@ modpod.prototype.doS3MRetrig = function(channel)
     case 0xE: this.channels[channel].volume = (this.channels[channel].volume * 3) / 2; break;
     case 0xF: this.channels[channel].volume >>= 1;
     }
-}
+};
 
 function audioGenerator(evt)
 {

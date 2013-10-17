@@ -51,6 +51,7 @@ This code needs to be broken into some different usage scenarios:
     <!-- <script type="text/javascript" src="loadxm.js"></script> -->
     <script type="text/javascript" src="modpod.js"></script>
     <script type="text/javascript">
+        var curRow = 0;
         var oldrow = 0;
         var mp = new modpod();
         
@@ -92,6 +93,15 @@ This code needs to be broken into some different usage scenarios:
             playtime.innerText = minutes + ":" +seconds + ":" + ms;
         }
         
+        function updateRowDisplay()
+        {
+            var hlRow = document.getElementById('hl_row');
+            
+            console.log("Row " + curRow);
+            
+            hlRow.style.webkitTransform = 'translate(0,' + curRow * 8 + 'px)';
+        }
+        
         function newRow(row)
         {
             var oldRowRef = document.getElementById('row' + oldrow);
@@ -100,7 +110,16 @@ This code needs to be broken into some different usage scenarios:
             oldRowRef.style.background = "white";
             
             playRow.style.background = "#FFFF66";
-            playRow.scrollIntoView(false);
+            //playRow.scrollIntoView(false);
+            
+            curRow = row;
+            //requestAnimationFrame(updateRowDisplay);
+            
+            var patDisplay = document.getElementById('ptable');
+            
+            patDisplay.style.webkitTransform = 'translate(0,-' + row + 'em)';
+            //console.log(patDisplay);
+            //console.log("PT (row " + row + "): "+ patDisplay.style.webkitTransform);
             
             oldrow = row;
         }
@@ -110,6 +129,7 @@ This code needs to be broken into some different usage scenarios:
             var root = document.getElementById('pattern_display');
             var tab = document.createElement('table');
             tab.className = "pattable";
+            tab.id = 'ptable';
             
             var noteString = [ 'C-', 'C#', 'D-', 'D#', 'E-', 'F-', 'F#', 'G-', 'G#', 'A-', 'A#', 'B-' ];
             var effectChar = [ '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F', // MOD effects
@@ -217,7 +237,7 @@ This code needs to be broken into some different usage scenarios:
             var requestURL = url;
             
             document.getElementById("playbox").style.visibility = "visible";
-            document.getElementById("welcome").style.visibility = "hidden";
+            document.getElementById("welcome").style.display = "none";
             document.getElementById("pattern_display").style.visibility = "visible";
         
             var request = new XMLHttpRequest();
@@ -256,30 +276,30 @@ This code needs to be broken into some different usage scenarios:
 <p>
 When you hear music on the Internet it is usually streamed from a compressed audio
 file. What if your web browser could perform live music instead of streaming it?
-Using the forthcoming W3C WebAudio API audio can be dynamically synthesised right
+Using the draft W3C WebAudio API audio can be dynamically synthesised right
 here in your web browser. This project will replay "tracker style" music via
 your browser.
 </p>
 <p>
 Supported browsers:<br>
-Chrome - Safari 6 - Safari (iOS) 6<br>
+Chrome (desktop / Android) - Safari 6+ (iOS / OSX)<br>
 Awaiting support:<br>
-Internet Explorer - Firefox (forthcoming) - Chrome (Android)
+Internet Explorer - Firefox (forthcoming)
 </p>
 
 <p>Click to play:</p>
 <ul>
     <li>
-        <a href="#" onClick="playURL('modules/revision.mod');">Revision</a>
+        <a href="#" onClick="playURL('modules/revision.mod');">Revision by h0ffman / Unstable Label</a>
     </li>
     <li>
-        <a href="#" onClick="playURL('modules/calm_b4_the_storm.mod');">Calm Before the Storm</a>
+        <a href="#" onClick="playURL('modules/calm_b4_the_storm.mod');">Calm Before the Storm by h0ffman / Unstable Label</a>
     </li>
     <li>
-        <a href="#" onClick="playURL('modules/ambpower.mod');">Ambient Power</a>
+        <a href="#" onClick="playURL('modules/ambpower.mod');">Ambient Power (8ch MOD) by Vouge / Triton</a>
     </li>
     <li>
-        <a href="#" onClick="playURL('modules/aces-high2.mod');">Aces High 2</a> - pass
+        <a href="#" onClick="playURL('modules/aces-high2.mod');">Aces High 2 by Romeo Knight</a> - pass
     </li>
     <li>
         <a href="#" onClick="playURL('modules/bagrasta.mod');">Bagrasta</a>
@@ -288,7 +308,7 @@ Internet Explorer - Firefox (forthcoming) - Chrome (Android)
         <a href="#" onClick="playURL('modules/bgnoises.mod');">BG Noises</a>
     </li>
     <li>
-        <a href="#" onClick="playURL('modules/drop_the_panic.mod');">Drop the Panic</a> - missing effect
+        <a href="#" onClick="playURL('modules/drop_the_panic.mod');">Drop the Panic by h0ffman / Unstable Label</a> - missing effect
     </li>
     <li>
         <a href="#" onClick="playURL('modules/chicago_song.mod');">Chicago Song</a> - out of tune?
@@ -300,7 +320,7 @@ Internet Explorer - Firefox (forthcoming) - Chrome (Android)
         <a href="#" onClick="playURL('modules/6beat.mod');">6 Beat</a> - pass
     </li>
     <li>
-        <a href="#" onClick="playURL('modules/nuke-carsp.mod');">Carsp</a> - pass
+        <a href="#" onClick="playURL('modules/nuke-carsp.mod');">Carsp by Nuke</a> - pass
     </li>
     <li>
         <a href="#" onClick="playURL('modules/cyberride.mod');">Cyber Ride</a> - need to check arppegio effect
@@ -315,22 +335,22 @@ Internet Explorer - Firefox (forthcoming) - Chrome (Android)
         <a href="#" onClick="playURL('modules/ode_to_protracker.mod');">Ode to Protracker</a> - If only...
     </li>
     <li>
-        <a href="#" onClick="playURL('modules/4-mat_madness.mod');">4-mat's Madness</a>
+        <a href="#" onClick="playURL('modules/4-mat_madness.mod');">4-mat's Madness by Matt Simmonds (4mat)</a>
     </li>
     <li>
         <a href="#" onClick="playURL('modules/sundance.mod');">Sundance</a>
     </li>
     <li>
-        <a href="#" onClick="playURL('modules/cream_of_the_earth.mod');">Cream of the Earth</a>
+        <a href="#" onClick="playURL('modules/cream_of_the_earth.mod');">Cream of the Earth by Romeo Knight</a>
     </li>
     <li>
-        <a href="#" onClick="playURL('modules/madness2_parta.mod');">Madness2 Part A</a> - weird cutout problems
+        <a href="#" onClick="playURL('modules/madness2_parta.mod');">Madness2 Part A by Matt Simmonds (4mat)</a> - weird cutout problems
     </li>
     <li>
         <a href="#" onClick="playURL('modules/black_queen.mod');">Black Queen</a> - WTF?!?!
     </li>
     <li>
-        <a href="#" onClick="playURL('modules/DOPE.MOD');">Dope</a>
+        <a href="#" onClick="playURL('modules/DOPE.MOD');">Onward Ride (Dope) 28ch MOD by Jugi</a>
     </li>
     <li>
         <a href="#" onClick="playURL('modules/steelchambers2.mod');">Pinball Fantasies - Steelchambers 2</a>
@@ -342,22 +362,22 @@ Internet Explorer - Firefox (forthcoming) - Chrome (Android)
         <a href="#" onClick="playURL('modules/backwards-sdrawkcab.s3m');">Backwards (S3M)</a> - major fail
     </li>
     <li>
-        <a href="#" onClick="playURL('modules/insideout.s3m');">Inside out (S3M)</a> - near perfect
+        <a href="#" onClick="playURL('modules/insideout.s3m');">Inside out (S3M) by Purple Motion / Future Crew</a> - near perfect
     </li>
     <li>
         <a href="#" onClick="playURL('modules/pod.s3m');">Point of Departure (S3M)</a> - sync issues
     </li>
     <li>
-        <a href="#" onClick="playURL('modules/mainmenu.s3m');">Main Menu (S3M)</a>
+        <a href="#" onClick="playURL('modules/mainmenu.s3m');">Main Menu (S3M) by Purple Motion / Future Crew</a>
     </li>
     <li>
-        <a href="#" onClick="playURL('modules/03-MENU.S3M');">OMF menu (S3M)</a> - Pass
+        <a href="#" onClick="playURL('modules/03-MENU.S3M');">OMF menu (S3M) by C.C. Catch</a> - Pass
     </li>
     <li>
         <a href="#" onClick="playURL('modules/impulse.s3m');">Impulse (S3M)</a>
     </li>
     <li>
-        <a href="#" onClick="playURL('modules/aceman_-_swimwalkin.xm');">Aceman Swimwalkin' (XM)</a>
+        <a href="#" onClick="playURL('modules/aceman_-_swimwalkin.xm');">Swimwalkin' (XM) by Aceman</a>
     </li>
 </ul>
 
@@ -375,7 +395,9 @@ Internet Explorer - Firefox (forthcoming) - Chrome (Android)
     <span class="topline"><a href="#" onClick="stopPlayback()">Stop</a></span>
 </div>
 
-<div id="pattern_display"></div>
+<div id="pattern_display">
+    <!-- <div id="hl_row"></div> -->
+</div>
 
 </body>
 </html>
